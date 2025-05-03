@@ -1,236 +1,42 @@
-<html><head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>GravityFill Demo</title>
-    <style>
-       @font-face { font-family: Arial !important; font-display: swap !important; }
-    </style>
-    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.0.3/css/font-awesome.css" rel="stylesheet">
-    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
-    <style>
-    ::-webkit-scrollbar {
-      width: 8px;
-    }
-    /* Track */
-    ::-webkit-scrollbar-track {
-      background: #f1f1f1; 
-    }
-     
-    /* Handle */
-    ::-webkit-scrollbar-thumb {
-      background: #888; 
-    }
-    input{
-        font-size: 14px;
-        font-weight: 700;
-    }
-    /* Handle on hover */
-    ::-webkit-scrollbar-thumb:hover {
-      background: #555; 
-    } body{color: #000;overflow-x: hidden;height: 100%;background-repeat: no-repeat;background-size: 100% 100%}.card{padding: 30px 40px;margin-top: 60px;margin-bottom: 60px;border: none !important;box-shadow: 0 6px 12px 0 rgba(0,0,0,0.2)}.blue-text{color: #00BCD4}.form-control-label{margin-bottom: 0}input, textarea, button{padding: 8px 15px;border-radius: 5px !important;margin: 5px 0px;box-sizing: border-box;border: 1px solid #ccc;font-size: 18px !important;font-weight: 300}input:focus, textarea:focus{-moz-box-shadow: none !important;-webkit-box-shadow: none !important;box-shadow: none !important;border: 1px solid #00BCD4;outline-width: 0;font-weight: 400}.btn-block{text-transform: uppercase;font-size: 15px !important;font-weight: 400;height: 43px;cursor: pointer}.btn-block:hover{color: #fff !important}button:focus{-moz-box-shadow: none !important;-webkit-box-shadow: none !important;box-shadow: none !important;outline-width: 0}</style>
-    </head>
-    <body classname="snippet-body">
-    <div class="container-fluid px-1 py-5 mx-auto">
-<div class="row d-flex justify-content-center">
-<div class="col-xl-7 col-lg-8 col-md-9 col-11 text-center">
-<h3>GravityFill Extension Demo</h3>
-<p class="blue-text">This page is just for testing.</p>
-<div class="card" style="border-radius: 10px;border:1px solid rgb(224, 224, 224);background: white;">
-<h5 class="text-center mb-4">CONTACT FORM</h5>
-<form class="form-card" onsubmit="event.preventDefault()">
-  <div class="row justify-content-between text-left">
-    <div class="form-group col-sm-6 flex-column d-flex">
-      <label class="form-control-label">Full Name<span class="text-danger"> *</span></label>
-      <input type="text" id="owner_name" name="owner_name" placeholder="Enter your full name">
-    </div>
-    <div class="form-group col-sm-6 flex-column d-flex">
-      <label class="form-control-label">Email<span class="text-danger"> *</span></label>
-      <input type="email" id="email" name="email" placeholder="Enter your email">
-    </div>
-  </div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.0/tesseract.min.js"></script>
+<script>
+// Simple OCR function that takes image data URL and returns text
+async function performOCR(imageDataUrl) {
+  try {
+    const { data: { text } } = await Tesseract.recognize(
+      imageDataUrl,
+      'eng', // Hardcoded to English
+      { logger: m => console.log(m) }
+    );
+    return text.trim();
+  } catch (error) {
+    console.error("OCR Error:", error);
+    throw error;
+  }
+}
 
-  <div class="row justify-content-between text-left">
-    <div class="form-group col-sm-6 flex-column d-flex">
-      <label class="form-control-label">Phone<span class="text-danger"> *</span></label>
-      <input type="tel" id="phone" name="phone" placeholder="Enter your phone number">
-    </div>
-    <div class="form-group col-sm-6 flex-column d-flex">
-      <label class="form-control-label">Business Name<span class="text-danger"> *</span></label>
-      <input type="text" id="business_name" name="business_name" placeholder="Enter your business name">
-    </div>
-  </div>
-
-  <div class="row justify-content-between text-left">
-    <div class="form-group col-sm-6 flex-column d-flex">
-      <label class="form-control-label">EIN<span class="text-danger"> *</span></label>
-      <input type="text" id="ein" name="ein" placeholder="Enter EIN">
-    </div>
-    <div class="form-group col-sm-6 flex-column d-flex">
-      <label class="form-control-label">Street Address<span class="text-danger"> *</span></label>
-      <input type="text" id="property_address" name="property_address" placeholder="Enter your street address">
-    </div>
-  </div>
-
-  <div class="row justify-content-between text-left">
-    <div class="form-group col-sm-4 flex-column d-flex">
-      <label class="form-control-label">City</label>
-      <input type="text" id="city" name="city" placeholder="Enter city">
-    </div>
-    <div class="form-group col-sm-4 flex-column d-flex">
-      <label class="form-control-label">State</label>
-      <input type="text" id="state" name="state" placeholder="Enter state">
-    </div>
-    <div class="form-group col-sm-4 flex-column d-flex">
-      <label class="form-control-label">ZIP Code</label>
-      <input type="text" id="zip" name="zip" placeholder="Enter ZIP code">
-    </div>
-  </div>
-
-  <div class="row justify-content-between text-left">
-    <div class="form-group col-sm-6 flex-column d-flex">
-      <label class="form-control-label">Date of Birth</label>
-      <input type="date" id="dob" name="dob">
-    </div>
-    <div class="form-group col-sm-6 flex-column d-flex">
-      <label class="form-control-label">Licenses Obtained</label>
-      <input type="text" id="licenses" name="licenses" placeholder="Enter licenses">
-    </div>
-  </div>
-
-  <div class="row justify-content-between text-left">
-    <div class="form-group col-sm-6 flex-column d-flex">
-      <label class="form-control-label">Name on Credit Card</label>
-      <input type="text" id="credit_name" name="credit_name" placeholder="Enter name on card">
-    </div>
-    <div class="form-group col-sm-6 flex-column d-flex">
-      <label class="form-control-label">Credit Card Number</label>
-      <input type="text" id="cc_number" name="cc_number" placeholder="Enter card number">
-    </div>
-  </div>
-
-  <div class="row justify-content-between text-left">
-    <div class="form-group col-sm-6 flex-column d-flex">
-      <label class="form-control-label">Expiry Date</label>
-      <input type="text" id="cc_expiry" name="cc_expiry" placeholder="MM/YY">
-    </div>
-    <div class="form-group col-sm-6 flex-column d-flex">
-      <label class="form-control-label">CVC</label>
-      <input type="text" id="cvc" name="cvc" placeholder="CVC">
-    </div>
-  </div>
-
-  <div class="row justify-content-between text-left">
-    <div class="form-group col-12 flex-column d-flex">
-      <label class="form-control-label">Billing Address</label>
-      <input type="text" id="billing_address" name="billing_address" placeholder="Enter billing address">
-    </div>
-  </div>
-
-  <div class="row justify-content-end">
-    <div class="form-group col-sm-6">
-      <button type="submit" class="btn-block btn-primary">Submit</button>
-    </div>
-  </div>
-</form>
-
+// Handle messages from parent window
+window.addEventListener('message', async (event) => {
+  // Verify origin for security in production
+  // if (event.origin !== "https://your-trusted-domain.com") return;
   
-</div>
-</div>
-</div>
-</div>
-    <script type="text/javascript" src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.bundle.min.js"></script>
-    <script type="text/javascript" src="#"></script>
-    <script type="text/javascript" src="#"></script>
-    <script type="text/javascript" src="#"></script>
-    <script type="text/javascript">function validate(val) {
-v1 = document.getElementById("fname");
-v2 = document.getElementById("lname");
-v3 = document.getElementById("email");
-v4 = document.getElementById("mob");
-v5 = document.getElementById("job");
-v6 = document.getElementById("ans");
+  if (event.data.type === 'processImage') {
+    try {
+      const text = await performOCR(event.data.imageDataUrl);
+      // Send result back to parent
+      window.parent.postMessage({
+        type: 'ocrResult',
+        text: text
+      }, '*'); // Replace * with specific origin in production
+    } catch (error) {
+      window.parent.postMessage({
+        type: 'ocrError',
+        error: error.message
+      }, '*');
+    }
+  }
+});
 
-flag1 = true;
-flag2 = true;
-flag3 = true;
-flag4 = true;
-flag5 = true;
-flag6 = true;
-
-if(val>=1 || val==0) {
-if(v1.value == "") {
-v1.style.borderColor = "red";
-flag1 = false;
-}
-else {
-v1.style.borderColor = "green";
-flag1 = true;
-}
-}
-
-if(val>=2 || val==0) {
-if(v2.value == "") {
-v2.style.borderColor = "red";
-flag2 = false;
-}
-else {
-v2.style.borderColor = "green";
-flag2 = true;
-}
-}
-if(val>=3 || val==0) {
-if(v3.value == "") {
-v3.style.borderColor = "red";
-flag3 = false;
-}
-else {
-v3.style.borderColor = "green";
-flag3 = true;
-}
-}
-if(val>=4 || val==0) {
-if(v4.value == "") {
-v4.style.borderColor = "red";
-flag4 = false;
-}
-else {
-v4.style.borderColor = "green";
-flag4 = true;
-}
-}
-if(val>=5 || val==0) {
-if(v5.value == "") {
-v5.style.borderColor = "red";
-flag5 = false;
-}
-else {
-v5.style.borderColor = "green";
-flag5 = true;
-}
-}
-if(val>=6 || val==0) {
-if(v6.value == "") {
-v6.style.borderColor = "red";
-flag6 = false;
-}
-else {
-v6.style.borderColor = "green";
-flag6 = true;
-}
-}
-
-flag = flag1 && flag2 && flag3 && flag4 && flag5 && flag6;
-
-return flag;
-}</script>
-    <script type="text/javascript">
-    var myLink = document.querySelectorAll('a[href="#"]');
-    myLink.forEach(function(link){
-      link.addEventListener('click', function(e) {
-        e.preventDefault();
-      });
-    });
-   </script>
-    
-</body></html>
+// Notify parent that OCR is ready
+window.parent.postMessage({ type: 'ocrReady' }, '*');
+</script>
