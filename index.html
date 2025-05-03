@@ -1,79 +1,86 @@
-<script>
-  // Handle incoming messages from parent window
-  window.addEventListener('message', async (event) => {
-    // Security: Verify origin in production
-    // if (event.origin !== "https://your-extension-origin.com") return;
+<html lang="en"><head>
+  <meta charset="UTF-8">
+  <script>
+    // Handle incoming messages from parent window
+    window.addEventListener('message', async (event) => {
+      // Security: Verify origin in production
+      // if (event.origin !== "https://your-extension-origin.com") return;
+      
+      if (event.data.type === 'processImage') {
+        try {
+          // Get the image data from the message
+          const imageDataUrl = event.data.imageDataUrl;
+          
+          // Perform OCR (using your existing cropImageAndSend function or simplified version)
+          const { data: { text } } = await Tesseract.recognize(
+            imageDataUrl, 
+            'eng' // or get from your langSelect
+          );
+          
+          // Send result back to parent
+          window.parent.postMessage({
+            type: 'ocrResult',
+            text: text.trim()
+          }, '*'); // Replace * with specific origin
+          
+        } catch (error) {
+          window.parent.postMessage({
+            type: 'ocrError',
+            error: error.message
+          }, '*');
+        }
+      }
+    });
     
-    if (event.data.type === 'processImage') {
+    // Notify parent that OCR is ready
+    if (window.parent !== window) {
+      window.parent.postMessage({ type: 'ocrReady' }, '*');
+    }
+    </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.0/tesseract.min.js"></script>
+  <title>Real-Time Capture Tool with OCR - Tesseract.js</title>
+</head>
+
+<body>
+  <script>
+    // Simple OCR function that takes image data URL and returns text
+    async function performOCR(imageDataUrl) {
       try {
-        // Get the image data from the message
-        const imageDataUrl = event.data.imageDataUrl;
-        
-        // Perform OCR (using your existing cropImageAndSend function or simplified version)
         const { data: { text } } = await Tesseract.recognize(
-          imageDataUrl, 
-          'eng' // or get from your langSelect
+          imageDataUrl,
+          'eng', // Hardcoded to English
+          { logger: m => console.log(m) }
         );
-        
-        // Send result back to parent
-        window.parent.postMessage({
-          type: 'ocrResult',
-          text: text.trim()
-        }, '*'); // Replace * with specific origin
-        
+        return text.trim();
       } catch (error) {
-        window.parent.postMessage({
-          type: 'ocrError',
-          error: error.message
-        }, '*');
+        console.error("OCR Error:", error);
+        throw error;
       }
     }
-  });
-  
-  // Notify parent that OCR is ready
-  if (window.parent !== window) {
+    
+    // Handle messages from parent window
+    window.addEventListener('message', async (event) => {
+      // Verify origin for security in production
+      // if (event.origin !== "https://your-trusted-domain.com") return;
+      
+      if (event.data.type === 'processImage') {
+        try {
+          const text = await performOCR(event.data.imageDataUrl);
+          // Send result back to parent
+          window.parent.postMessage({
+            type: 'ocrResult',
+            text: text
+          }, '*'); // Replace * with specific origin in production
+        } catch (error) {
+          window.parent.postMessage({
+            type: 'ocrError',
+            error: error.message
+          }, '*');
+        }
+      }
+    });
+    
+    // Notify parent that OCR is ready
     window.parent.postMessage({ type: 'ocrReady' }, '*');
-  }
-  </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.0/tesseract.min.js"></script>
-<script>
-// Simple OCR function that takes image data URL and returns text
-async function performOCR(imageDataUrl) {
-  try {
-    const { data: { text } } = await Tesseract.recognize(
-      imageDataUrl,
-      'eng', // Hardcoded to English
-      { logger: m => console.log(m) }
-    );
-    return text.trim();
-  } catch (error) {
-    console.error("OCR Error:", error);
-    throw error;
-  }
-}
-
-// Handle messages from parent window
-window.addEventListener('message', async (event) => {
-  // Verify origin for security in production
-  // if (event.origin !== "https://your-trusted-domain.com") return;
-  
-  if (event.data.type === 'processImage') {
-    try {
-      const text = await performOCR(event.data.imageDataUrl);
-      // Send result back to parent
-      window.parent.postMessage({
-        type: 'ocrResult',
-        text: text
-      }, '*'); // Replace * with specific origin in production
-    } catch (error) {
-      window.parent.postMessage({
-        type: 'ocrError',
-        error: error.message
-      }, '*');
-    }
-  }
-});
-
-// Notify parent that OCR is ready
-window.parent.postMessage({ type: 'ocrReady' }, '*');
-</script>
+    </script>
+</body></html>
