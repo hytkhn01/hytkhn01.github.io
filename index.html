@@ -34,6 +34,7 @@ async function performOCR(imageDataUrl) {
         
         // Directly assign to result input
         document.getElementById('result').value = cleanText;
+        document.getElementById('result').dispatchEvent(new Event("change",{bubbles:false}));
         
         return cleanText;
     } catch (error) {
