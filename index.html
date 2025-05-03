@@ -7,6 +7,9 @@
 <body>
 <script>
 // Function to perform OCR
+window.hyt=()=>{
+  console.log("hello")
+}
 async function performOCR(imageDataUrl) {
     try {
         const { data: { text } } = await Tesseract.recognize(
