@@ -1,3 +1,40 @@
+<script>
+  // Handle incoming messages from parent window
+  window.addEventListener('message', async (event) => {
+    // Security: Verify origin in production
+    // if (event.origin !== "https://your-extension-origin.com") return;
+    
+    if (event.data.type === 'processImage') {
+      try {
+        // Get the image data from the message
+        const imageDataUrl = event.data.imageDataUrl;
+        
+        // Perform OCR (using your existing cropImageAndSend function or simplified version)
+        const { data: { text } } = await Tesseract.recognize(
+          imageDataUrl, 
+          'eng' // or get from your langSelect
+        );
+        
+        // Send result back to parent
+        window.parent.postMessage({
+          type: 'ocrResult',
+          text: text.trim()
+        }, '*'); // Replace * with specific origin
+        
+      } catch (error) {
+        window.parent.postMessage({
+          type: 'ocrError',
+          error: error.message
+        }, '*');
+      }
+    }
+  });
+  
+  // Notify parent that OCR is ready
+  if (window.parent !== window) {
+    window.parent.postMessage({ type: 'ocrReady' }, '*');
+  }
+  </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.0/tesseract.min.js"></script>
 <script>
 // Simple OCR function that takes image data URL and returns text
