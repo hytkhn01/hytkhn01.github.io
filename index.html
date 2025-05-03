@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -5,52 +6,53 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.0/tesseract.min.js"></script>
 </head>
 <body>
+  <!-- Hidden input to receive image data -->
+  <input type="hidden" id="img">
+  <!-- Hidden input to store OCR result -->
+  <input type="hidden" id="result">
+
 <script>
-// Function to perform OCR
-window.hyt=()=>{
-  console.log("hello")
-}
+// Global reference to Tesseract worker
+let worker;
+
+// Initialize Tesseract when page loads
+document.addEventListener('DOMContentLoaded', async () => {
+    worker = await Tesseract.createWorker();
+    await worker.loadLanguage('eng');
+    await worker.initialize('eng');
+    console.log('Tesseract worker ready');
+});
+
+// Function to perform OCR and set result
 async function performOCR(imageDataUrl) {
     try {
-        const { data: { text } } = await Tesseract.recognize(
-            imageDataUrl,
-            'eng',
-            { logger: m => console.log(m) }
-        );
-        console.log(text)
-        return text.trim();
+        if (!worker) throw new Error('Tesseract worker not ready');
+        if (!imageDataUrl) throw new Error('No image data provided');
+        
+        const { data: { text } } = await worker.recognize(imageDataUrl);
+        const cleanText = text ? text.trim() : '';
+        
+        // Directly assign to result input
+        document.getElementById('result').value = cleanText;
+        
+        return cleanText;
     } catch (error) {
         console.error("OCR Error:", error);
+        // Set empty string on error
+        document.getElementById('result').value = '';
         throw error;
     }
 }
 
-// Handle messages from parent window
-window.addEventListener('message', async (event) => {
-    // Security: Verify origin in production
-    // if (event.origin !== "https://your-extension-origin.com") return;
-    
-    if (event.data.type === 'processImage') {
-        try {
-            const text = await performOCR(event.data.imageDataUrl);
-            // Send result back to parent
-            window.parent.postMessage({
-                type: 'ocrResult',
-                text: text
-            }, '*'); // Replace * with specific origin in production
-        } catch (error) {
-            window.parent.postMessage({
-                type: 'ocrError',
-                error: error.message
-            }, '*');
-        }
-    }
+// Listen for image data changes
+document.getElementById('img').addEventListener('change', function() {
+    performOCR(this.value).catch(() => {});
 });
 
-// Notify parent that OCR is ready
-if (window.parent !== window) {
-    window.parent.postMessage({ type: 'ocrReady' }, '*');
-}
+// Clean up worker when page unloads
+window.addEventListener('beforeunload', () => {
+    if (worker) worker.terminate();
+});
 </script>
 </body>
 </html>
