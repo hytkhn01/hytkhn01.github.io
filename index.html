@@ -1,58 +1,82 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>OCR Processor</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.0/tesseract.min.js"></script>
+  <meta charset="UTF-8">
+  <title>Online Test Fraud Detection</title>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    #logCount {
+      font-size: 20px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+    #eventLog {
+      border: 1px solid #ccc;
+      height: 300px;
+      overflow-y: scroll;
+      padding: 10px;
+      background-color: #f9f9f9;
+    }
+    .log-item {
+      margin-bottom: 5px;
+      border-bottom: 1px dashed #aaa;
+      padding-bottom: 4px;
+    }
+  </style>
 </head>
 <body>
-  <!-- Hidden input to receive image data -->
-  <input type="hidden" id="img">
-  <!-- Hidden input to store OCR result -->
-  <input type="hidden" id="result">
+
+<div id="logCount">Event Count: 0</div>
+<div id="eventLog"></div>
 
 <script>
-// Global reference to Tesseract worker
-let worker;
+  $(document).ready(function () {
+    let eventCount = 0;
 
-// Initialize Tesseract when page loads
-document.addEventListener('DOMContentLoaded', async () => {
-    worker = await Tesseract.createWorker();
-    await worker.loadLanguage('eng');
-    await worker.initialize('eng');
-    console.log('Tesseract worker ready');
-});
-
-// Function to perform OCR and set result
-async function performOCR(imageDataUrl) {
-    try {
-        if (!worker) throw new Error('Tesseract worker not ready');
-        if (!imageDataUrl) throw new Error('No image data provided');
-        
-        const { data: { text } } = await worker.recognize(imageDataUrl);
-        const cleanText = text ? text.trim() : '';
-        
-        // Directly assign to result input
-        document.getElementById('result').value = cleanText;
-        document.getElementById('result').dispatchEvent(new Event("change",{bubbles:true}));
-        return cleanText;
-    } catch (error) {
-        console.error("OCR Error:", error);
-        // Set empty string on error
-        document.getElementById('result').value = '';
-        throw error;
+    function logEvent(message) {
+      const timestamp = new Date().toLocaleTimeString();
+      const logHtml = `<div class="log-item">[${timestamp}] ${message}</div>`;
+      $('#eventLog').prepend(logHtml);
+      $('#eventLog').scrollTop(0); // scroll to top
+      eventCount++;
+      $('#logCount').text(`Event Count: ${eventCount}`);
     }
-}
 
-// Listen for image data changes
-document.getElementById('img').addEventListener('change', function() {
-    performOCR(this.value).catch(() => {});
-});
-
-// Clean up worker when page unloads
-window.addEventListener('beforeunload', () => {
-    if (worker) worker.terminate();
-});
+    // Events
+    $(window).on('blur', () => logEvent('Window lost focus (blur)'));
+    $(window).on('focus', () => logEvent('Window focused (focus)'));
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') {
+        logEvent('Tab hidden (visibilitychange)');
+      } else {
+        logEvent('Tab visible again (visibilitychange)');
+      }
+    });
+    $(document).on('mouseleave', () => logEvent('Mouse left document (mouseleave)'));
+    $(document).on('contextmenu', (e) => {
+      e.preventDefault();
+      logEvent('Right-click detected (contextmenu)');
+    });
+    $(document).on('copy cut paste', (e) => {
+      logEvent(`${e.type.toUpperCase()} action detected`);
+    });
+    $(document).on('keydown', (e) => {
+      if (e.ctrlKey || e.metaKey) {
+        logEvent(`Keydown: Ctrl or Cmd + ${e.key}`);
+      }
+      if (e.key === 'PrintScreen') {
+        logEvent('PrintScreen key pressed');
+      }
+      if (e.key === 'F12') {
+        logEvent('F12 pressed (likely trying to open dev tools)');
+      }
+    });
+  });
 </script>
+
 </body>
 </html>
