@@ -1,0 +1,1262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nexus POS — Invoice Management</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+/* ============================== TOKENS ============================== */
+:root{
+  --ink:#0F172A;
+  --ink-soft:#475569;
+  --line:#E2E8F0;
+  --bg:#F5F7FA;
+  --card:#FFFFFF;
+  --accent:#047857;      /* emerald - primary action color */
+  --accent-dark:#035c46;
+  --accent-soft:#ECFDF5;
+  --danger:#DC2626;
+  --danger-soft:#FEF2F2;
+  --warn:#B45309;
+  --radius:14px;
+  --radius-sm:9px;
+  --shadow:0 1px 2px rgba(15,23,42,.04), 0 8px 24px -12px rgba(15,23,42,.10);
+  --font: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --font-ar: "Tahoma","Segoe UI",Arial,sans-serif;
+  --font-num: "Segoe UI",Roboto,monospace;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  font-family:var(--font);
+  background:var(--bg);
+  color:var(--ink);
+  -webkit-font-smoothing:antialiased;
+}
+button{font-family:inherit;cursor:pointer;}
+input,select,textarea{font-family:inherit;}
+::selection{background:var(--accent-soft);}
+
+/* ============================== LAYOUT ============================== */
+.app{display:flex;min-height:100vh;}
+
+.sidebar{
+  width:230px;
+  flex-shrink:0;
+  background:var(--ink);
+  color:#fff;
+  display:flex;
+  flex-direction:column;
+  padding:20px 14px;
+  position:sticky;
+  top:0;
+  height:100vh;
+}
+.brand{
+  display:flex;align-items:center;gap:10px;
+  padding:6px 10px 22px 10px;
+}
+.brand .mark{
+  width:34px;height:34px;border-radius:9px;
+  background:linear-gradient(135deg,var(--accent),#0ea5a0);
+  display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:15px;color:#fff;
+}
+.brand .name{font-weight:700;font-size:16px;letter-spacing:.2px;}
+.brand .sub{font-size:11px;color:#94A3B8;margin-top:-2px;}
+
+.nav{display:flex;flex-direction:column;gap:2px;margin-top:6px;}
+.nav-btn{
+  display:flex;align-items:center;gap:11px;
+  background:none;border:none;color:#CBD5E1;
+  padding:11px 12px;border-radius:var(--radius-sm);
+  font-size:14px;font-weight:500;text-align:left;
+  transition:background .15s,color .15s;
+}
+.nav-btn svg{width:18px;height:18px;flex-shrink:0;opacity:.85;}
+.nav-btn:hover{background:rgba(255,255,255,.06);color:#fff;}
+.nav-btn.active{background:var(--accent);color:#fff;}
+.nav-btn.active svg{opacity:1;}
+.sidebar-foot{
+  margin-top:auto;padding:12px 10px 2px;
+  font-size:11px;color:#64748B;border-top:1px solid rgba(255,255,255,.08);
+  padding-top:14px;
+}
+
+.content{flex:1;min-width:0;padding:26px 32px 60px;}
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:22px;
+}
+.topbar h1{font-size:21px;margin:0;font-weight:700;}
+.topbar .desc{font-size:13px;color:var(--ink-soft);margin-top:2px;}
+
+.view{display:none;}
+.view.active{display:block;animation:fadein .18s ease;}
+@keyframes fadein{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;}}
+
+/* ============================== CARDS / GRID ============================== */
+.card{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  box-shadow:var(--shadow);
+  padding:20px;
+}
+.grid{display:grid;gap:18px;}
+.grid-4{grid-template-columns:repeat(4,1fr);}
+.grid-2{grid-template-columns:repeat(2,1fr);}
+.grid-3{grid-template-columns:repeat(3,1fr);}
+@media(max-width:1100px){.grid-4{grid-template-columns:repeat(2,1fr);} .grid-3{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:640px){.grid-4,.grid-3,.grid-2{grid-template-columns:1fr;}}
+
+.stat-card{display:flex;flex-direction:column;gap:6px;}
+.stat-card .label{font-size:12.5px;color:var(--ink-soft);font-weight:600;text-transform:uppercase;letter-spacing:.4px;}
+.stat-card .value{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;}
+.stat-card .hint{font-size:12px;color:#94A3B8;}
+
+/* ============================== FORM ELEMENTS ============================== */
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;}
+.field label{font-size:12.5px;font-weight:600;color:var(--ink-soft);}
+.field input,.field select,.field textarea{
+  border:1px solid var(--line);border-radius:var(--radius-sm);
+  padding:10px 12px;font-size:14px;background:#fff;color:var(--ink);
+  outline:none;transition:border-color .15s,box-shadow .15s;
+}
+.field input:focus,.field select:focus,.field textarea:focus{
+  border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);
+}
+.field input[dir="rtl"]{font-family:var(--font-ar);text-align:right;}
+.field-row{display:flex;gap:14px;}
+.field-row .field{flex:1;}
+.hint-text{font-size:12px;color:#94A3B8;margin-top:-8px;margin-bottom:14px;}
+
+.btn{
+  border:none;border-radius:var(--radius-sm);
+  padding:10px 16px;font-size:13.5px;font-weight:600;
+  display:inline-flex;align-items:center;gap:7px;
+  transition:filter .15s,transform .05s;
+}
+.btn:active{transform:scale(.98);}
+.btn-primary{background:var(--accent);color:#fff;}
+.btn-primary:hover{filter:brightness(1.08);}
+.btn-secondary{background:#fff;color:var(--ink);border:1px solid var(--line);}
+.btn-secondary:hover{background:#F8FAFC;}
+.btn-danger{background:var(--danger-soft);color:var(--danger);}
+.btn-danger:hover{filter:brightness(.96);}
+.btn-ghost{background:none;color:var(--ink-soft);padding:6px 8px;}
+.btn-ghost:hover{color:var(--ink);}
+.btn-sm{padding:6px 10px;font-size:12.5px;}
+.btn svg{width:15px;height:15px;}
+
+/* ============================== TABLE ============================== */
+.table-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+thead th{
+  text-align:left;font-size:11.5px;text-transform:uppercase;letter-spacing:.4px;
+  color:var(--ink-soft);font-weight:700;padding:10px 12px;border-bottom:1px solid var(--line);
+  white-space:nowrap;
+}
+tbody td{padding:11px 12px;border-bottom:1px solid #F1F5F9;vertical-align:middle;}
+tbody tr:hover{background:#FAFBFC;}
+.cell-num{text-align:right;font-variant-numeric:tabular-nums;}
+.pill{
+  display:inline-block;padding:3px 9px;border-radius:99px;font-size:11.5px;font-weight:700;
+}
+.pill-ok{background:var(--accent-soft);color:var(--accent-dark);}
+.pill-low{background:#FEF3C7;color:#92400E;}
+.pill-out{background:var(--danger-soft);color:var(--danger);}
+
+.search-box{position:relative;max-width:340px;}
+.search-box input{width:100%;padding:10px 12px 10px 36px;border:1px solid var(--line);border-radius:var(--radius-sm);font-size:14px;outline:none;}
+.search-box input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
+.search-box svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:#94A3B8;}
+
+.section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:12px;flex-wrap:wrap;}
+
+.empty-state{text-align:center;padding:50px 20px;color:#94A3B8;}
+.empty-state svg{width:42px;height:42px;margin-bottom:10px;opacity:.5;}
+.empty-state .t{font-weight:700;color:var(--ink-soft);font-size:14.5px;}
+.empty-state .d{font-size:13px;margin-top:3px;}
+
+/* ============================== MODAL ============================== */
+.modal-backdrop{
+  display:none;position:fixed;inset:0;background:rgba(15,23,42,.45);
+  align-items:center;justify-content:center;z-index:100;padding:20px;
+}
+.modal-backdrop.open{display:flex;}
+.modal{
+  background:#fff;border-radius:16px;max-width:560px;width:100%;
+  max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25);
+}
+.modal.modal-lg{max-width:760px;}
+.modal-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:18px 22px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#fff;z-index:2;
+}
+.modal-head h3{margin:0;font-size:16px;}
+.modal-body{padding:22px;}
+.modal-foot{padding:16px 22px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:10px;position:sticky;bottom:0;background:#fff;}
+
+/* toast */
+#toast{
+  position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:var(--ink);color:#fff;padding:11px 18px;border-radius:10px;font-size:13.5px;
+  opacity:0;pointer-events:none;transition:all .25s;z-index:300;box-shadow:0 10px 30px rgba(0,0,0,.3);
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* ============================== INVOICE BUILDER ============================== */
+.invoice-layout{display:grid;grid-template-columns:1fr 320px;gap:18px;align-items:start;}
+@media(max-width:980px){.invoice-layout{grid-template-columns:1fr;}}
+.line-table td, .line-table th{padding:8px 10px;}
+.line-table input{width:100%;border:1px solid var(--line);border-radius:7px;padding:6px 8px;font-size:13px;text-align:right;}
+.qty-price-input{max-width:80px;}
+.price-input{max-width:130px;}
+.totals-box{display:flex;flex-direction:column;gap:10px;}
+.totals-row{display:flex;justify-content:space-between;font-size:13.5px;color:var(--ink-soft);}
+.totals-row.grand{font-size:19px;font-weight:800;color:var(--ink);border-top:1px dashed var(--line);padding-top:10px;margin-top:2px;}
+.totals-row input{width:100px;text-align:right;border:1px solid var(--line);border-radius:7px;padding:5px 8px;font-size:13px;}
+
+.product-picker{position:relative;}
+.picker-results{
+  position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--line);
+  border-radius:10px;margin-top:6px;box-shadow:var(--shadow);max-height:260px;overflow-y:auto;z-index:20;display:none;
+}
+.picker-results.open{display:block;}
+.picker-item{padding:10px 14px;border-bottom:1px solid #F1F5F9;display:flex;justify-content:space-between;gap:10px;}
+.picker-item:hover{background:var(--accent-soft);cursor:pointer;}
+.picker-item .n{font-weight:600;font-size:13.5px;}
+.picker-item .c{font-size:11.5px;color:#94A3B8;}
+.picker-item .p{font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;}
+
+/* ============================== PRINT INVOICE TEMPLATE ============================== */
+#print-area{display:none;}
+.inv-page{
+  width:210mm;min-height:297mm;background:#fff;margin:0 auto;padding:14mm;
+  font-size:12px;color:#111;
+}
+.inv-header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #111;padding-bottom:10px;margin-bottom:14px;}
+.inv-header .en{text-align:left;}
+.inv-header .ar{text-align:right;direction:rtl;font-family:var(--font-ar);}
+.inv-header .store-name{font-size:17px;font-weight:800;margin:0 0 3px;}
+.inv-header .store-meta{font-size:11px;line-height:1.6;color:#333;}
+.inv-title-row{display:flex;justify-content:space-between;margin:12px 0;font-size:12px;}
+.inv-title-row .tag{font-size:15px;font-weight:800;letter-spacing:1px;text-transform:uppercase;}
+.inv-parties{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:14px;}
+.inv-parties .box{border:1px solid #ccc;border-radius:6px;padding:9px 12px;}
+.inv-parties .box h4{margin:0 0 6px;font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:#555;}
+.inv-parties .box div{font-size:11.5px;line-height:1.7;}
+table.inv-items{width:100%;border-collapse:collapse;margin-bottom:14px;}
+table.inv-items th{background:#111;color:#fff;font-size:10.5px;text-transform:uppercase;padding:7px 8px;text-align:left;}
+table.inv-items td{border-bottom:1px solid #ddd;padding:7px 8px;font-size:11.5px;}
+table.inv-items td.num,table.inv-items th.num{text-align:right;}
+.inv-bottom{display:flex;justify-content:space-between;align-items:flex-end;margin-top:10px;}
+.inv-qr{display:flex;flex-direction:column;align-items:flex-start;gap:6px;}
+.inv-qr .cap{font-size:9.5px;color:#666;}
+.inv-totals{width:260px;}
+.inv-totals .r{display:flex;justify-content:space-between;font-size:12px;padding:4px 0;}
+.inv-totals .r.grand{border-top:2px solid #111;margin-top:4px;padding-top:7px;font-size:14.5px;font-weight:800;}
+.inv-sign{display:flex;justify-content:space-between;margin-top:46px;}
+.inv-sign .s{width:44%;border-top:1px solid #333;padding-top:5px;font-size:10.5px;text-align:center;color:#444;}
+.inv-note{margin-top:20px;font-size:9.5px;color:#888;text-align:center;}
+
+@media print{
+  @page{ size:A4; margin:0; }
+  body *{visibility:hidden;}
+  #print-area, #print-area *{visibility:visible;}
+  #print-area{display:block;position:absolute;left:0;top:0;}
+  .inv-page{margin:0;box-shadow:none;}
+  .inv-page:not(:last-child){page-break-after:always;}
+}
+
+/* generic utility */
+.flex{display:flex;} .items-center{align-items:center;} .gap-8{gap:8px;} .gap-12{gap:12px;}
+.text-muted{color:var(--ink-soft);} .mt-0{margin-top:0;} .w-full{width:100%;}
+.badge-count{background:var(--accent-soft);color:var(--accent-dark);font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- ============================== SIDEBAR ============================== -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="mark">N</div>
+      <div>
+        <div class="name">Nexus POS</div>
+        <div class="sub">Offline Invoicing</div>
+      </div>
+    </div>
+    <nav class="nav" id="nav">
+      <button class="nav-btn active" data-view="dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+        Dashboard
+      </button>
+      <button class="nav-btn" data-view="invoice">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+        New Invoice
+      </button>
+      <button class="nav-btn" data-view="products">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7 12 3 4 7v10l8 4 8-4V7Z"/><path d="M4 7l8 4 8-4M12 11v10"/></svg>
+        Products
+      </button>
+      <button class="nav-btn" data-view="history">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg>
+        Invoice History
+      </button>
+      <button class="nav-btn" data-view="backup">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg>
+        Backup &amp; Restore
+      </button>
+      <button class="nav-btn" data-view="settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V21a2 2 0 1 1-4 0v-.2a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H3a2 2 0 1 1 0-4h.2a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.6V3a2 2 0 1 1 4 0v.2a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.6 1H21a2 2 0 1 1 0 4h-.2a1.7 1.7 0 0 0-1.6 1Z"/></svg>
+        Settings
+      </button>
+    </nav>
+    <div class="sidebar-foot">Everything is stored on this device.<br>No data leaves your browser.</div>
+  </aside>
+
+  <!-- ============================== MAIN CONTENT ============================== -->
+  <main class="content">
+
+    <!-- DASHBOARD -->
+    <section class="view active" id="view-dashboard">
+      <div class="topbar">
+        <div><h1>Dashboard</h1><div class="desc">A quick look at today's activity.</div></div>
+        <button class="btn btn-primary" onclick="App.go('invoice')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+          New Invoice
+        </button>
+      </div>
+      <div class="grid grid-4" style="margin-bottom:20px;">
+        <div class="card stat-card"><div class="label">Invoices Today</div><div class="value" id="stat-inv-today">0</div><div class="hint">Created since midnight</div></div>
+        <div class="card stat-card"><div class="label">Revenue Today</div><div class="value" id="stat-rev-today">0.00</div><div class="hint" id="stat-currency-hint">SAR</div></div>
+        <div class="card stat-card"><div class="label">Total Products</div><div class="value" id="stat-products">0</div><div class="hint">In catalog</div></div>
+        <div class="card stat-card"><div class="label">Low Stock</div><div class="value" id="stat-lowstock">0</div><div class="hint">10 units or fewer</div></div>
+      </div>
+      <div class="card">
+        <div class="section-head"><h3 style="margin:0;font-size:15px;">Recent Invoices</h3><button class="btn btn-secondary btn-sm" onclick="App.go('history')">View all</button></div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Invoice #</th><th>Date</th><th>Customer</th><th>Items</th><th style="text-align:right;">Total</th></tr></thead>
+          <tbody id="dash-recent-body"></tbody>
+        </table></div>
+        <div id="dash-empty" class="empty-state" style="display:none;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg>
+          <div class="t">No invoices yet</div><div class="d">Create your first invoice to see it here.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- NEW INVOICE -->
+    <section class="view" id="view-invoice">
+      <div class="topbar">
+        <div><h1>New Invoice</h1><div class="desc" id="inv-number-preview">Invoice number will be generated on save.</div></div>
+        <div class="flex gap-8">
+          <button class="btn btn-secondary" onclick="InvoiceForm.reset(true)">Clear</button>
+          <button class="btn btn-primary" onclick="InvoiceForm.saveAndPrint()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z"/></svg>
+            Save &amp; Print
+          </button>
+        </div>
+      </div>
+
+      <div class="invoice-layout">
+        <div class="flex" style="flex-direction:column;gap:18px;">
+
+          <div class="card">
+            <h3 class="mt-0" style="font-size:14.5px;">Customer Information <span class="text-muted" style="font-weight:400;font-size:12.5px;">(optional)</span></h3>
+            <div class="field-row">
+              <div class="field"><label>Customer Code</label><input id="f-cust-code" placeholder="e.g. C0001"></div>
+              <div class="field"><label>Customer Name</label><input id="f-cust-name" placeholder="Customer full name"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label>Customer Address</label><input id="f-cust-address" placeholder="Street, city"></div>
+              <div class="field"><label>Customer VAT Number</label><input id="f-cust-vat" placeholder="Optional"></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3 class="mt-0" style="font-size:14.5px;">Add Products</h3>
+            <div class="product-picker">
+              <div class="search-box w-full">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+                <input id="f-product-search" placeholder="Search product by name or code…" autocomplete="off">
+              </div>
+              <div class="picker-results" id="picker-results"></div>
+            </div>
+
+            <div class="table-wrap" style="margin-top:16px;">
+              <table class="line-table">
+                <thead><tr><th>#</th><th>Item</th><th style="width:80px;">Qty</th><th style="width:130px;">Price</th><th style="width:60px;">VAT%</th><th style="text-align:right;">Total</th><th></th></tr></thead>
+                <tbody id="line-items-body"></tbody>
+              </table>
+            </div>
+            <div class="empty-state" id="lines-empty">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 7 12 3 4 7v10l8 4 8-4V7Z"/></svg>
+              <div class="t">No products added</div><div class="d">Search above and select a product to add it.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="position:sticky;top:20px;">
+          <h3 class="mt-0" style="font-size:14.5px;">Summary</h3>
+          <div class="totals-box">
+            <div class="totals-row"><span>Subtotal</span><span id="sum-subtotal">0.00</span></div>
+            <div class="totals-row"><span>Discount</span><input type="number" id="f-discount" value="0" min="0" step="0.01" oninput="InvoiceForm.recalc()"></div>
+            <div class="totals-row"><span>VAT</span><span id="sum-vat">0.00</span></div>
+            <div class="totals-row grand"><span>Grand Total</span><span id="sum-grand">0.00</span></div>
+          </div>
+          <div class="hint-text" style="margin-top:14px;">Invoice date &amp; time are stamped automatically when you save.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PRODUCTS -->
+    <section class="view" id="view-products">
+      <div class="topbar">
+        <div><h1>Products</h1><div class="desc">Manage your product catalog.</div></div>
+        <button class="btn btn-primary" onclick="ProductForm.openNew()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+          Add Product
+        </button>
+      </div>
+      <div class="card">
+        <div class="section-head">
+          <div class="search-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+            <input id="product-search" placeholder="Search by name or code…" oninput="Products.render()">
+          </div>
+          <span class="text-muted" style="font-size:13px;"><span class="badge-count" id="product-count">0</span> products</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Code</th><th>Name (EN)</th><th>Name (AR)</th><th style="text-align:right;">Price</th><th style="text-align:right;">Stock</th><th style="text-align:right;">VAT%</th><th></th></tr></thead>
+            <tbody id="products-body"></tbody>
+          </table>
+        </div>
+        <div class="empty-state" id="products-empty" style="display:none;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 7 12 3 4 7v10l8 4 8-4V7Z"/></svg>
+          <div class="t">No products yet</div><div class="d">Add your first product to start building invoices.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section class="view" id="view-settings">
+      <div class="topbar"><div><h1>Settings</h1><div class="desc">Business details used on every invoice.</div></div></div>
+      <div class="grid grid-2">
+        <div class="card">
+          <h3 class="mt-0" style="font-size:14.5px;">Store Identity</h3>
+          <div class="field"><label>Store Name (English)</label><input id="s-name-en" placeholder="e.g. Nexus Auto Parts"></div>
+          <div class="field"><label>Store Name (Arabic)</label><input id="s-name-ar" dir="rtl" placeholder="اسم المتجر"></div>
+          <div class="field-row">
+            <div class="field"><label>Phone 1</label><input id="s-phone1"></div>
+            <div class="field"><label>Phone 2</label><input id="s-phone2"></div>
+            <div class="field"><label>Phone 3</label><input id="s-phone3"></div>
+          </div>
+          <div class="field"><label>VAT Number</label><input id="s-vat" placeholder="300000000000003"></div>
+        </div>
+        <div class="card">
+          <h3 class="mt-0" style="font-size:14.5px;">Address &amp; Billing</h3>
+          <div class="field"><label>Store Address (English)</label><textarea id="s-addr-en" rows="2"></textarea></div>
+          <div class="field"><label>Store Address (Arabic)</label><textarea id="s-addr-ar" dir="rtl" rows="2"></textarea></div>
+          <div class="field-row">
+            <div class="field"><label>Currency</label><input id="s-currency" placeholder="SAR"></div>
+            <div class="field"><label>Invoice Number Prefix (optional)</label><input id="s-prefix" placeholder="Leave blank for plain numbers"></div>
+            <div class="field"><label>Default VAT %</label><input id="s-vat-default" type="number" step="0.01" placeholder="15"></div>
+          </div>
+        </div>
+      </div>
+      <div class="flex" style="margin-top:6px;"><button class="btn btn-primary" onclick="Settings.save()">Save Settings</button></div>
+    </section>
+
+    <!-- HISTORY -->
+    <section class="view" id="view-history">
+      <div class="topbar"><div><h1>Invoice History</h1><div class="desc">Every invoice you have created.</div></div></div>
+      <div class="card">
+        <div class="section-head">
+          <div class="search-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+            <input id="history-search" placeholder="Search invoice # or customer…" oninput="History.render()">
+          </div>
+          <span class="text-muted" style="font-size:13px;"><span class="badge-count" id="history-count">0</span> invoices</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Invoice #</th><th>Date</th><th>Customer</th><th>Items</th><th style="text-align:right;">Total</th><th></th></tr></thead>
+            <tbody id="history-body"></tbody>
+          </table>
+        </div>
+        <div class="empty-state" id="history-empty" style="display:none;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg>
+          <div class="t">No invoices saved</div><div class="d">Invoices you save will appear here.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- BACKUP -->
+    <section class="view" id="view-backup">
+      <div class="topbar"><div><h1>Backup &amp; Restore</h1><div class="desc">Export your data or restore from a file.</div></div></div>
+      <div class="grid grid-2">
+        <div class="card">
+          <h3 class="mt-0" style="font-size:14.5px;">Export</h3>
+          <p class="text-muted" style="font-size:13px;margin-top:0;">Downloads a JSON file you can store safely or move to another device.</p>
+          <div class="flex" style="flex-wrap:wrap;gap:10px;">
+            <button class="btn btn-secondary" onclick="Backup.exportPart('products')">Export Products</button>
+            <button class="btn btn-secondary" onclick="Backup.exportPart('invoices')">Export Invoices</button>
+            <button class="btn btn-secondary" onclick="Backup.exportPart('settings')">Export Settings</button>
+            <button class="btn btn-primary" onclick="Backup.exportAll()">Export Everything</button>
+          </div>
+        </div>
+        <div class="card">
+          <h3 class="mt-0" style="font-size:14.5px;">Import / Restore</h3>
+          <p class="text-muted" style="font-size:13px;margin-top:0;">Restoring will overwrite existing data of the same type. This can't be undone.</p>
+          <input type="file" id="restore-file" accept="application/json" style="display:none;" onchange="Backup.handleFile(event)">
+          <button class="btn btn-danger" onclick="document.getElementById('restore-file').click()">Import Backup File</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ============================== PRODUCT MODAL ============================== -->
+<div class="modal-backdrop" id="modal-product-backdrop">
+  <div class="modal">
+    <div class="modal-head"><h3 id="product-modal-title">Add Product</h3><button class="btn-ghost" onclick="Modal.close('modal-product-backdrop')">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="p-id">
+      <div class="field"><label>Product Code (auto-generated)</label><input id="p-code" disabled></div>
+      <div class="field-row">
+        <div class="field"><label>Product Name (English)</label><input id="p-name-en"></div>
+        <div class="field"><label>Product Name (Arabic)</label><input id="p-name-ar" dir="rtl"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Price</label><input id="p-price" type="number" step="0.01" min="0"></div>
+        <div class="field"><label>Quantity in Stock</label><input id="p-qty" type="number" step="1" min="0"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>VAT %</label><input id="p-vat" type="number" step="0.01" min="0"></div>
+        <div class="field"></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="Modal.close('modal-product-backdrop')">Cancel</button>
+      <button class="btn btn-primary" onclick="ProductForm.save()">Save Product</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================== CONFIRM MODAL ============================== -->
+<div class="modal-backdrop" id="modal-confirm-backdrop">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-head"><h3>Please confirm</h3><button class="btn-ghost" onclick="Modal.close('modal-confirm-backdrop')">✕</button></div>
+    <div class="modal-body"><p id="confirm-text" style="margin:0;font-size:14px;color:var(--ink-soft);"></p></div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="Modal.close('modal-confirm-backdrop')">Cancel</button>
+      <button class="btn btn-danger" id="confirm-ok-btn">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================== INVOICE VIEW MODAL ============================== -->
+<div class="modal-backdrop" id="modal-invview-backdrop">
+  <div class="modal modal-lg">
+    <div class="modal-head"><h3 id="invview-title">Invoice</h3><button class="btn-ghost" onclick="Modal.close('modal-invview-backdrop')">✕</button></div>
+    <div class="modal-body" id="invview-body" style="background:#F1F5F9;"></div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="Modal.close('modal-invview-backdrop')">Close</button>
+      <button class="btn btn-primary" id="invview-reprint-btn">Reprint</button>
+    </div>
+  </div>
+</div>
+
+<div id="print-area"></div>
+<div id="toast"></div>
+
+<script>
+/* ================================================================
+   NEXUS POS — single-file offline POS & invoice management system
+   Storage: localStorage only. No backend calls of any kind.
+   Modules: Store, Settings, Products, ProductForm, InvoiceForm,
+            History, Backup, ZatcaQR, Print, Modal, App
+   ================================================================ */
+
+/* ------------------------------ Store ------------------------------ */
+const Store = (() => {
+  const KEYS = {
+    settings: 'nexus_pos_settings',
+    products: 'nexus_pos_products',
+    invoices: 'nexus_pos_invoices',
+    counters: 'nexus_pos_counters'
+  };
+
+  const defaultSettings = {
+    nameEn: '', nameAr: '', phone1: '', phone2: '', phone3: '',
+    vatNumber: '', addressEn: '', addressAr: '',
+    currency: 'SAR', prefix: '', defaultVat: 15
+  };
+  const defaultCounters = { product: 0, invoice: 0 };
+
+  function read(key, fallback) {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : fallback;
+    } catch (e) {
+      console.error('Storage read failed for', key, e);
+      return fallback;
+    }
+  }
+  function write(key, value) {
+    try { localStorage.setItem(key, JSON.stringify(value)); return true; }
+    catch (e) { console.error('Storage write failed for', key, e); return false; }
+  }
+
+  return {
+    getSettings: () => Object.assign({}, defaultSettings, read(KEYS.settings, {})),
+    setSettings: (v) => write(KEYS.settings, v),
+    getProducts: () => read(KEYS.products, []),
+    setProducts: (v) => write(KEYS.products, v),
+    getInvoices: () => read(KEYS.invoices, []),
+    setInvoices: (v) => write(KEYS.invoices, v),
+    getCounters: () => Object.assign({}, defaultCounters, read(KEYS.counters, {})),
+    setCounters: (v) => write(KEYS.counters, v),
+    KEYS
+  };
+})();
+
+/* ------------------------------ Toast ------------------------------ */
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => el.classList.remove('show'), 2400);
+}
+
+/* ------------------------------ Modal ------------------------------ */
+const Modal = {
+  open(id) { document.getElementById(id).classList.add('open'); },
+  close(id) { document.getElementById(id).classList.remove('open'); },
+  confirm(text, onConfirm) {
+    document.getElementById('confirm-text').textContent = text;
+    const btn = document.getElementById('confirm-ok-btn');
+    const clone = btn.cloneNode(true); // strip old listeners
+    btn.parentNode.replaceChild(clone, btn);
+    clone.addEventListener('click', () => { onConfirm(); Modal.close('modal-confirm-backdrop'); });
+    Modal.open('modal-confirm-backdrop');
+  }
+};
+
+/* ------------------------------ App / Nav ------------------------------ */
+const App = {
+  init() {
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+      btn.addEventListener('click', () => App.go(btn.dataset.view));
+    });
+    Settings.load();
+    Products.render();
+    InvoiceForm.reset(false);
+    History.render();
+    Dashboard.render();
+  },
+  go(view) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById('view-' + view).classList.add('active');
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+    if (view === 'dashboard') Dashboard.render();
+    if (view === 'products') Products.render();
+    if (view === 'history') History.render();
+    if (view === 'settings') Settings.load();
+    if (view === 'invoice') InvoiceForm.updateNumberPreview();
+  }
+};
+
+/* ------------------------------ Settings ------------------------------ */
+const Settings = {
+  load() {
+    const s = Store.getSettings();
+    document.getElementById('s-name-en').value = s.nameEn;
+    document.getElementById('s-name-ar').value = s.nameAr;
+    document.getElementById('s-phone1').value = s.phone1;
+    document.getElementById('s-phone2').value = s.phone2;
+    document.getElementById('s-phone3').value = s.phone3;
+    document.getElementById('s-vat').value = s.vatNumber;
+    document.getElementById('s-addr-en').value = s.addressEn;
+    document.getElementById('s-addr-ar').value = s.addressAr;
+    document.getElementById('s-currency').value = s.currency;
+    document.getElementById('s-prefix').value = s.prefix;
+    document.getElementById('s-vat-default').value = s.defaultVat;
+  },
+  save() {
+    const s = {
+      nameEn: document.getElementById('s-name-en').value.trim(),
+      nameAr: document.getElementById('s-name-ar').value.trim(),
+      phone1: document.getElementById('s-phone1').value.trim(),
+      phone2: document.getElementById('s-phone2').value.trim(),
+      phone3: document.getElementById('s-phone3').value.trim(),
+      vatNumber: document.getElementById('s-vat').value.trim(),
+      addressEn: document.getElementById('s-addr-en').value.trim(),
+      addressAr: document.getElementById('s-addr-ar').value.trim(),
+      currency: document.getElementById('s-currency').value.trim() || 'SAR',
+      prefix: document.getElementById('s-prefix').value.trim(),
+      defaultVat: parseFloat(document.getElementById('s-vat-default').value) || 0
+    };
+    Store.setSettings(s);
+    toast('Settings saved');
+    Dashboard.render();
+  }
+};
+
+/* ------------------------------ Products ------------------------------ */
+const Products = {
+  render() {
+    const q = (document.getElementById('product-search').value || '').toLowerCase().trim();
+    const products = Store.getProducts();
+    const filtered = products.filter(p =>
+      !q || p.nameEn.toLowerCase().includes(q) || p.nameAr.includes(q) ||
+      p.code.toLowerCase().includes(q)
+    );
+    const body = document.getElementById('products-body');
+    body.innerHTML = '';
+    document.getElementById('product-count').textContent = products.length;
+    document.getElementById('products-empty').style.display = filtered.length ? 'none' : 'block';
+
+    filtered.forEach(p => {
+      const tr = document.createElement('tr');
+      const stockPill = p.qty <= 0 ? `<span class="pill pill-out">Out</span>`
+        : p.qty <= 10 ? `<span class="pill pill-low">Low</span>` : `<span class="pill pill-ok">In stock</span>`;
+      tr.innerHTML = `
+        <td>${esc(p.code)}</td>
+        <td>${esc(p.nameEn)}</td>
+        <td dir="rtl" style="font-family:var(--font-ar);">${esc(p.nameAr)}</td>
+        <td class="cell-num">${p.price.toFixed(2)}</td>
+        <td class="cell-num">${p.qty} ${stockPill}</td>
+        <td class="cell-num">${p.vat}%</td>
+        <td>
+          <button class="btn-ghost btn-sm" title="Edit" onclick="ProductForm.openEdit('${p.id}')">✏️</button>
+          <button class="btn-ghost btn-sm" title="Delete" onclick="Products.remove('${p.id}')">🗑️</button>
+        </td>`;
+      body.appendChild(tr);
+    });
+  },
+  remove(id) {
+    Modal.confirm('Delete this product? This cannot be undone.', () => {
+      const products = Store.getProducts().filter(p => p.id !== id);
+      Store.setProducts(products);
+      Products.render();
+      Dashboard.render();
+      toast('Product deleted');
+    });
+  }
+};
+
+const ProductForm = {
+  openNew() {
+    document.getElementById('product-modal-title').textContent = 'Add Product';
+    document.getElementById('p-id').value = '';
+    const counters = Store.getCounters();
+    const nextCode = 'P' + String(counters.product + 1).padStart(5, '0');
+    document.getElementById('p-code').value = nextCode;
+    document.getElementById('p-name-en').value = '';
+    document.getElementById('p-name-ar').value = '';
+    document.getElementById('p-price').value = '';
+    document.getElementById('p-qty').value = '';
+    document.getElementById('p-vat').value = Store.getSettings().defaultVat;
+    Modal.open('modal-product-backdrop');
+  },
+  openEdit(id) {
+    const p = Store.getProducts().find(x => x.id === id);
+    if (!p) return;
+    document.getElementById('product-modal-title').textContent = 'Edit Product';
+    document.getElementById('p-id').value = p.id;
+    document.getElementById('p-code').value = p.code;
+    document.getElementById('p-name-en').value = p.nameEn;
+    document.getElementById('p-name-ar').value = p.nameAr;
+    document.getElementById('p-price').value = p.price;
+    document.getElementById('p-qty').value = p.qty;
+    document.getElementById('p-vat').value = p.vat;
+    Modal.open('modal-product-backdrop');
+  },
+  save() {
+    const nameEn = document.getElementById('p-name-en').value.trim();
+    if (!nameEn) { toast('Product name (English) is required'); return; }
+    const id = document.getElementById('p-id').value;
+    const products = Store.getProducts();
+
+    if (id) {
+      const idx = products.findIndex(p => p.id === id);
+      if (idx === -1) return;
+      products[idx] = Object.assign({}, products[idx], {
+        nameEn, nameAr: document.getElementById('p-name-ar').value.trim(),
+        price: parseFloat(document.getElementById('p-price').value) || 0,
+        qty: parseInt(document.getElementById('p-qty').value) || 0,
+        vat: parseFloat(document.getElementById('p-vat').value) || 0
+      });
+    } else {
+      const counters = Store.getCounters();
+      counters.product += 1;
+      Store.setCounters(counters);
+      products.push({
+        id: 'prod_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+        code: 'P' + String(counters.product).padStart(5, '0'),
+        nameEn, nameAr: document.getElementById('p-name-ar').value.trim(),
+        price: parseFloat(document.getElementById('p-price').value) || 0,
+        qty: parseInt(document.getElementById('p-qty').value) || 0,
+        vat: parseFloat(document.getElementById('p-vat').value) || 0
+      });
+    }
+    Store.setProducts(products);
+    Modal.close('modal-product-backdrop');
+    Products.render();
+    Dashboard.render();
+    toast('Product saved');
+  }
+};
+
+/* ------------------------------ Invoice Form ------------------------------ */
+const InvoiceForm = {
+  lines: [],
+
+  reset(showToast) {
+    this.lines = [];
+    document.getElementById('f-cust-code').value = '';
+    document.getElementById('f-cust-name').value = '';
+    document.getElementById('f-cust-address').value = '';
+    document.getElementById('f-cust-vat').value = '';
+    document.getElementById('f-product-search').value = '';
+    document.getElementById('f-discount').value = 0;
+    this.renderLines();
+    this.updateNumberPreview();
+    if (showToast) toast('Invoice cleared');
+  },
+
+  updateNumberPreview() {
+    const s = Store.getSettings();
+    const c = Store.getCounters();
+    const preview = s.prefix + String(c.invoice + 1).padStart(5, '0');
+    document.getElementById('inv-number-preview').textContent = 'Next invoice number: ' + preview;
+  },
+
+  addProduct(product) {
+    const existing = this.lines.find(l => l.productId === product.id);
+    if (existing) { existing.qty += 1; }
+    else {
+      this.lines.push({
+        productId: product.id, code: product.code,
+        nameEn: product.nameEn, nameAr: product.nameAr,
+        qty: 1, price: product.price, vat: product.vat
+      });
+    }
+    this.renderLines();
+    document.getElementById('f-product-search').value = '';
+    document.getElementById('picker-results').classList.remove('open');
+  },
+
+  removeLine(idx) { this.lines.splice(idx, 1); this.renderLines(); },
+
+  updateLine(idx, field, value) {
+    this.lines[idx][field] = parseFloat(value) || 0;
+    this.recalc();
+  },
+
+  renderLines() {
+    const body = document.getElementById('line-items-body');
+    body.innerHTML = '';
+    document.getElementById('lines-empty').style.display = this.lines.length ? 'none' : 'block';
+    this.lines.forEach((l, idx) => {
+      const total = l.qty * l.price * (1 + l.vat / 100);
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${idx + 1}</td>
+        <td><div style="font-weight:600;">${esc(l.nameEn)}</div><div style="font-size:11.5px;color:#94A3B8;">${esc(l.code)}</div></td>
+        <td><input class="qty-price-input" type="number" min="0" step="1" value="${l.qty}" onchange="InvoiceForm.updateLine(${idx},'qty',this.value)"></td>
+        <td><input class="price-input" type="number" min="0" step="0.01" value="${l.price}" onchange="InvoiceForm.updateLine(${idx},'price',this.value)"></td>
+        <td><input class="qty-price-input" type="number" min="0" step="0.01" value="${l.vat}" onchange="InvoiceForm.updateLine(${idx},'vat',this.value)"></td>
+        <td class="cell-num">${total.toFixed(2)}</td>
+        <td><button class="btn-ghost btn-sm" onclick="InvoiceForm.removeLine(${idx})">✕</button></td>`;
+      body.appendChild(tr);
+    });
+    this.recalc();
+  },
+
+  recalc() {
+    const subtotal = this.lines.reduce((s, l) => s + l.qty * l.price, 0);
+    const vatTotal = this.lines.reduce((s, l) => s + l.qty * l.price * (l.vat / 100), 0);
+    const discount = parseFloat(document.getElementById('f-discount').value) || 0;
+    const grand = subtotal + vatTotal - discount;
+    document.getElementById('sum-subtotal').textContent = subtotal.toFixed(2);
+    document.getElementById('sum-vat').textContent = vatTotal.toFixed(2);
+    document.getElementById('sum-grand').textContent = grand.toFixed(2);
+    return { subtotal, vatTotal, discount, grand };
+  },
+
+  saveAndPrint() {
+    const custName = document.getElementById('f-cust-name').value.trim() || 'Walk-in Customer';
+    if (!this.lines.length) { toast('Add at least one product'); return; }
+
+    const totals = this.recalc();
+    const settings = Store.getSettings();
+    const counters = Store.getCounters();
+    counters.invoice += 1;
+    Store.setCounters(counters);
+
+    const now = new Date();
+    const invoice = {
+      id: 'inv_' + Date.now(),
+      number: settings.prefix + String(counters.invoice).padStart(5, '0'),
+      dateISO: now.toISOString(),
+      dateDisplay: now.toLocaleDateString(),
+      timeDisplay: now.toLocaleTimeString(),
+      customer: {
+        code: document.getElementById('f-cust-code').value.trim(),
+        name: custName,
+        address: document.getElementById('f-cust-address').value.trim(),
+        vat: document.getElementById('f-cust-vat').value.trim()
+      },
+      lines: JSON.parse(JSON.stringify(this.lines)),
+      subtotal: totals.subtotal,
+      discount: totals.discount,
+      vatTotal: totals.vatTotal,
+      grandTotal: totals.grand,
+      currency: settings.currency,
+      storeSnapshot: settings
+    };
+
+    // deduct stock
+    const products = Store.getProducts();
+    invoice.lines.forEach(l => {
+      const p = products.find(x => x.id === l.productId);
+      if (p) p.qty = Math.max(0, p.qty - l.qty);
+    });
+    Store.setProducts(products);
+
+    const invoices = Store.getInvoices();
+    invoices.unshift(invoice);
+    Store.setInvoices(invoices);
+
+    Print.render(invoice);
+    Products.render();
+    History.render();
+    Dashboard.render();
+    this.reset(false);
+    toast('Invoice ' + invoice.number + ' saved');
+    setTimeout(() => window.print(), 250);
+  }
+};
+
+// product picker search
+document.addEventListener('DOMContentLoaded', () => {
+  const input = document.getElementById('f-product-search');
+  input.addEventListener('input', () => {
+    const q = input.value.toLowerCase().trim();
+    const results = document.getElementById('picker-results');
+    if (!q) { results.classList.remove('open'); results.innerHTML = ''; return; }
+    const matches = Store.getProducts().filter(p =>
+      p.nameEn.toLowerCase().includes(q) || p.nameAr.includes(q) ||
+      p.code.toLowerCase().includes(q)
+    ).slice(0, 12);
+    results.innerHTML = matches.length ? '' : '<div class="picker-item"><span class="c">No matching products</span></div>';
+    matches.forEach(p => {
+      const div = document.createElement('div');
+      div.className = 'picker-item';
+      div.innerHTML = `<div><div class="n">${esc(p.nameEn)}</div><div class="c">${esc(p.code)} · Stock: ${p.qty}</div></div><div class="p">${p.price.toFixed(2)}</div>`;
+      div.addEventListener('click', () => InvoiceForm.addProduct(p));
+      results.appendChild(div);
+    });
+    results.classList.add('open');
+  });
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.product-picker')) document.getElementById('picker-results').classList.remove('open');
+  });
+});
+
+/* ------------------------------ Dashboard ------------------------------ */
+const Dashboard = {
+  render() {
+    const invoices = Store.getInvoices();
+    const products = Store.getProducts();
+    const settings = Store.getSettings();
+    const todayKey = new Date().toDateString();
+    const todays = invoices.filter(i => new Date(i.dateISO).toDateString() === todayKey);
+
+    document.getElementById('stat-inv-today').textContent = todays.length;
+    document.getElementById('stat-rev-today').textContent = todays.reduce((s, i) => s + i.grandTotal, 0).toFixed(2);
+    document.getElementById('stat-currency-hint').textContent = settings.currency;
+    document.getElementById('stat-products').textContent = products.length;
+    document.getElementById('stat-lowstock').textContent = products.filter(p => p.qty <= 10).length;
+
+    const body = document.getElementById('dash-recent-body');
+    body.innerHTML = '';
+    const recent = invoices.slice(0, 6);
+    document.getElementById('dash-empty').style.display = recent.length ? 'none' : 'block';
+    recent.forEach(inv => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${esc(inv.number)}</td><td>${esc(inv.dateDisplay)}</td><td>${esc(inv.customer.name)}</td><td>${inv.lines.length}</td><td class="cell-num">${inv.grandTotal.toFixed(2)}</td>`;
+      body.appendChild(tr);
+    });
+  }
+};
+
+/* ------------------------------ History ------------------------------ */
+const History = {
+  render() {
+    const q = (document.getElementById('history-search').value || '').toLowerCase().trim();
+    const invoices = Store.getInvoices();
+    const filtered = invoices.filter(i => !q || i.number.toLowerCase().includes(q) || i.customer.name.toLowerCase().includes(q));
+    document.getElementById('history-count').textContent = invoices.length;
+    document.getElementById('history-empty').style.display = filtered.length ? 'none' : 'block';
+    const body = document.getElementById('history-body');
+    body.innerHTML = '';
+    filtered.forEach(inv => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${esc(inv.number)}</td><td>${esc(inv.dateDisplay)} ${esc(inv.timeDisplay)}</td>
+        <td>${esc(inv.customer.name)}</td><td>${inv.lines.length}</td>
+        <td class="cell-num">${inv.grandTotal.toFixed(2)}</td>
+        <td>
+          <button class="btn-ghost btn-sm" onclick="History.view('${inv.id}')">👁️</button>
+          <button class="btn-ghost btn-sm" onclick="History.reprint('${inv.id}')">🖨️</button>
+          <button class="btn-ghost btn-sm" onclick="History.remove('${inv.id}')">🗑️</button>
+        </td>`;
+      body.appendChild(tr);
+    });
+  },
+  view(id) {
+    const inv = Store.getInvoices().find(i => i.id === id);
+    if (!inv) return;
+    document.getElementById('invview-title').textContent = 'Invoice ' + inv.number;
+    document.getElementById('invview-body').innerHTML = Print.buildHtml(inv);
+    document.getElementById('invview-reprint-btn').onclick = () => History.reprint(id);
+    Modal.open('modal-invview-backdrop');
+    setTimeout(() => Print.renderQrInto(inv, document.getElementById('invview-body')), 30);
+  },
+  reprint(id) {
+    const inv = Store.getInvoices().find(i => i.id === id);
+    if (!inv) return;
+    Print.render(inv);
+    setTimeout(() => window.print(), 250);
+  },
+  remove(id) {
+    Modal.confirm('Delete this invoice permanently?', () => {
+      Store.setInvoices(Store.getInvoices().filter(i => i.id !== id));
+      History.render();
+      Dashboard.render();
+      toast('Invoice deleted');
+    });
+  }
+};
+
+/* ------------------------------ ZATCA-style simplified QR ------------------------------
+   Encodes seller name, VAT number, invoice timestamp, invoice total and VAT total
+   as TLV (Tag-Length-Value) fields, base64-encoded — the same structure used in
+   Saudi ZATCA Phase 1 "simplified" e-invoice QR codes.
+   Note: this produces the structural TLV payload only. Real ZATCA Phase 2
+   compliance additionally requires a cryptographic stamp / signed XML from a
+   government-issued certificate, which needs a server-side integration and is
+   outside what a fully offline, backend-free page can produce.
+------------------------------------------------------------------------------ */
+const ZatcaQR = {
+  tlv(tag, value) {
+    const bytes = new TextEncoder().encode(String(value));
+    return new Uint8Array([tag, bytes.length, ...bytes]);
+  },
+  build(sellerName, vatNumber, isoTimestamp, total, vatTotal) {
+    const fields = [
+      this.tlv(1, sellerName || ''),
+      this.tlv(2, vatNumber || ''),
+      this.tlv(3, isoTimestamp),
+      this.tlv(4, total.toFixed(2)),
+      this.tlv(5, vatTotal.toFixed(2))
+    ];
+    const len = fields.reduce((s, f) => s + f.length, 0);
+    const buf = new Uint8Array(len);
+    let offset = 0;
+    fields.forEach(f => { buf.set(f, offset); offset += f.length; });
+    let binary = '';
+    buf.forEach(b => binary += String.fromCharCode(b));
+    return btoa(binary);
+  }
+};
+
+/* ------------------------------ Print / Invoice rendering ------------------------------ */
+const Print = {
+  // Every label on the printed invoice is bilingual (English / Arabic) in the
+  // same visual style, so the invoice reads identically in both languages.
+  buildHtml(inv) {
+    const s = inv.storeSnapshot || Store.getSettings();
+    const hasCustomerDetails = inv.customer.code || inv.customer.address || inv.customer.vat;
+
+    const rows = inv.lines.map((l, idx) => {
+      const total = l.qty * l.price * (1 + l.vat / 100);
+      return `<tr>
+        <td>${idx + 1}</td>
+        <td>${esc(l.nameEn)}<br><span dir="rtl" style="font-family:var(--font-ar);">${esc(l.nameAr || '')}</span></td>
+        <td class="num">${l.qty}</td><td class="num">${l.price.toFixed(2)}</td>
+        <td class="num">${l.vat}%</td><td class="num">${total.toFixed(2)}</td>
+      </tr>`;
+    }).join('');
+
+    return `
+      <div class="inv-page">
+        <div class="inv-header">
+          <div class="en">
+            <p class="store-name">${esc(s.nameEn || 'Store Name')}</p>
+            <div class="store-meta">
+              ${esc(s.addressEn || '')}<br>
+              ${[s.phone1, s.phone2, s.phone3].filter(Boolean).map(esc).join(' · ')}<br>
+              VAT No: ${esc(s.vatNumber || '')}
+            </div>
+          </div>
+          <div class="ar">
+            <p class="store-name">${esc(s.nameAr || s.nameEn || '')}</p>
+            <div class="store-meta">
+              ${esc(s.addressAr || '')}<br>
+              ${[s.phone1, s.phone2, s.phone3].filter(Boolean).map(esc).join(' · ')}<br>
+              الرقم الضريبي: ${esc(s.vatNumber || '')}
+            </div>
+          </div>
+        </div>
+
+        <div class="inv-title-row">
+          <div><span class="tag">Tax Invoice / فاتورة ضريبية</span></div>
+          <div style="text-align:right;">
+            Invoice No. / رقم الفاتورة: <strong>${esc(inv.number)}</strong><br>
+            Date / التاريخ: ${esc(inv.dateDisplay)} ${esc(inv.timeDisplay)}
+          </div>
+        </div>
+
+        <div class="inv-parties">
+          <div class="box">
+            <h4>Bill To / الفاتورة إلى</h4>
+            <div><strong>${esc(inv.customer.name)}</strong></div>
+            ${hasCustomerDetails ? `
+            <div>Code / الرمز: ${esc(inv.customer.code || '—')}</div>
+            <div>Address / العنوان: ${esc(inv.customer.address || '—')}</div>
+            <div>VAT / الرقم الضريبي: ${esc(inv.customer.vat || '—')}</div>` : ''}
+          </div>
+          <div class="box">
+            <h4>Payment / الدفع</h4>
+            <div>Currency / العملة: ${esc(inv.currency)}</div>
+            <div>Items / عدد الأصناف: ${inv.lines.length}</div>
+          </div>
+        </div>
+
+        <table class="inv-items">
+          <thead><tr>
+            <th>No<br>م</th>
+            <th>Description<br>الوصف</th>
+            <th class="num">Qty<br>الكمية</th>
+            <th class="num">Price<br>السعر</th>
+            <th class="num">VAT<br>الضريبة</th>
+            <th class="num">Total<br>الإجمالي</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+
+        <div class="inv-bottom">
+          <div class="inv-qr">
+            <div id="qr-${inv.id}"></div>
+            <span class="cap">Scan to verify / امسح للتحقق</span>
+          </div>
+          <div class="inv-totals">
+            <div class="r"><span>Subtotal / المجموع الفرعي</span><span>${inv.subtotal.toFixed(2)} ${esc(inv.currency)}</span></div>
+            <div class="r"><span>Discount / الخصم</span><span>-${inv.discount.toFixed(2)} ${esc(inv.currency)}</span></div>
+            <div class="r"><span>VAT / ضريبة القيمة المضافة</span><span>${inv.vatTotal.toFixed(2)} ${esc(inv.currency)}</span></div>
+            <div class="r grand"><span>Grand Total / الإجمالي الكلي</span><span>${inv.grandTotal.toFixed(2)} ${esc(inv.currency)}</span></div>
+          </div>
+        </div>
+
+        <div class="inv-sign">
+          <div class="s">Authorized Signature / التوقيع المعتمد</div>
+          <div class="s">Customer Signature / توقيع العميل</div>
+        </div>
+      </div>`;
+  },
+
+  renderQrInto(inv, container) {
+    const s = inv.storeSnapshot || Store.getSettings();
+    const qrEl = container.querySelector('#qr-' + inv.id);
+    if (!qrEl || typeof QRCode === 'undefined') return;
+    qrEl.innerHTML = '';
+    // Prefer the Arabic legal name for the seller field, matching how KSA
+    // businesses typically register their name with ZATCA.
+    const sellerName = s.nameAr || s.nameEn;
+    // ZATCA-style timestamps omit milliseconds: 2026-07-13T09:29:43Z
+    const zatcaTimestamp = inv.dateISO.split('.')[0] + 'Z';
+    const payload = ZatcaQR.build(sellerName, s.vatNumber, zatcaTimestamp, inv.grandTotal, inv.vatTotal);
+    new QRCode(qrEl, { text: payload, width: 110, height: 110, correctLevel: QRCode.CorrectLevel.M });
+  },
+
+  render(inv) {
+    const area = document.getElementById('print-area');
+    area.innerHTML = this.buildHtml(inv);
+    this.renderQrInto(inv, area);
+  }
+};
+
+/* ------------------------------ Backup ------------------------------ */
+const Backup = {
+  download(filename, dataObj) {
+    const blob = new Blob([JSON.stringify(dataObj, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  },
+  exportPart(part) {
+    const map = {
+      products: { type: 'products', products: Store.getProducts(), counters: { product: Store.getCounters().product } },
+      invoices: { type: 'invoices', invoices: Store.getInvoices(), counters: { invoice: Store.getCounters().invoice } },
+      settings: { type: 'settings', settings: Store.getSettings() }
+    };
+    this.download(`nexus-pos-${part}-${Date.now()}.json`, map[part]);
+    toast(part.charAt(0).toUpperCase() + part.slice(1) + ' exported');
+  },
+  exportAll() {
+    this.download(`nexus-pos-backup-full-${Date.now()}.json`, {
+      type: 'full',
+      settings: Store.getSettings(),
+      products: Store.getProducts(),
+      invoices: Store.getInvoices(),
+      counters: Store.getCounters()
+    });
+    toast('Full backup exported');
+  },
+  handleFile(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result);
+        Modal.confirm('Restore data from this file? Existing matching data will be overwritten.', () => {
+          if (data.settings) Store.setSettings(Object.assign(Store.getSettings(), data.settings));
+          if (data.products) Store.setProducts(data.products);
+          if (data.invoices) Store.setInvoices(data.invoices);
+          if (data.counters) Store.setCounters(Object.assign(Store.getCounters(), data.counters));
+          Settings.load(); Products.render(); History.render(); Dashboard.render();
+          toast('Backup restored successfully');
+        });
+      } catch (e) {
+        toast('That file could not be read as a valid backup');
+      }
+      event.target.value = '';
+    };
+    reader.readAsText(file);
+  }
+};
+
+/* ------------------------------ Helpers ------------------------------ */
+function esc(str) {
+  return String(str ?? '').replace(/[&<>"']/g, m => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[m]));
+}
+
+/* ------------------------------ Boot ------------------------------ */
+App.init();
+</script>
+</body>
+</html>
