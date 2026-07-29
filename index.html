@@ -366,18 +366,6 @@ table.inv-items td.num,table.inv-items th.num{text-align:right;}
         <div class="flex" style="flex-direction:column;gap:18px;">
 
           <div class="card">
-            <h3 class="mt-0" style="font-size:14.5px;">Customer Information <span class="text-muted" style="font-weight:400;font-size:12.5px;">(optional)</span></h3>
-            <div class="field-row">
-              <div class="field"><label>Customer Code</label><input id="f-cust-code" placeholder="e.g. C0001"></div>
-              <div class="field"><label>Customer Name</label><input id="f-cust-name" placeholder="Customer full name"></div>
-            </div>
-            <div class="field-row">
-              <div class="field"><label>Customer Address</label><input id="f-cust-address" placeholder="Street, city"></div>
-              <div class="field"><label>Customer VAT Number</label><input id="f-cust-vat" placeholder="Optional"></div>
-            </div>
-          </div>
-
-          <div class="card">
             <h3 class="mt-0" style="font-size:14.5px;">Add Products</h3>
             <div class="product-picker">
               <div class="search-box w-full">
@@ -409,6 +397,18 @@ table.inv-items td.num,table.inv-items th.num{text-align:right;}
             <div class="totals-row grand"><span>Grand Total</span><span id="sum-grand">0.00</span></div>
           </div>
           <div class="hint-text" style="margin-top:14px;">Invoice date &amp; time are stamped automatically when you save.</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:18px;">
+        <h3 class="mt-0" style="font-size:14.5px;">Customer Information <span class="text-muted" style="font-weight:400;font-size:12.5px;">(optional)</span></h3>
+        <div class="field-row">
+          <div class="field"><label>Customer Code</label><input id="f-cust-code" placeholder="e.g. C0001"></div>
+          <div class="field"><label>Customer Name</label><input id="f-cust-name" placeholder="Customer full name"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Customer Address</label><input id="f-cust-address" placeholder="Street, city"></div>
+          <div class="field"><label>Customer VAT Number</label><input id="f-cust-vat" placeholder="Optional"></div>
         </div>
       </div>
     </section>
